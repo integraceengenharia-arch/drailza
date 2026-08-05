@@ -335,20 +335,14 @@ body {
 .section {
     padding: 6rem 2rem;
     background: rgba(8, 11, 18, 0.22);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
 }
 
 .section.section-alt {
     background: rgba(9, 13, 20, 0.22);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
 }
 
 .section.section-cta {
     background: linear-gradient(135deg, rgba(8, 11, 18, 0.24) 0%, rgba(166, 132, 102, 0.08) 100%);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
 }
 
 .container {
@@ -1601,4 +1595,110 @@ body {
     }
     .disease-item--highlight::after { display: none; }
     .highlight-tags { margin-top: 0.5rem; }
+}
+
+/* ==========================================================================
+   MOBILE — Ajustes completos para celular (≤ 480px)
+   ========================================================================== */
+
+@media (max-width: 480px) {
+
+    /* Header */
+    .top-overlay-header {
+        padding: 0.75rem 1rem;
+        gap: 0.5rem;
+    }
+    .doc-name { font-size: 0.78rem; }
+    .doc-crm { display: none; }
+    .header-cta-btn { font-size: 0.75rem; padding: 0.5rem 0.9rem; }
+
+    /* Hero */
+    .hero-section { padding: 5rem 1.2rem 3rem; }
+    .hero-label { font-size: 0.62rem; letter-spacing: 2px; }
+    .hero-title span:first-child { font-size: 2rem; }
+    .hero-title span:last-child  { font-size: 2.8rem; }
+    .hero-subtitle { font-size: 0.88rem; }
+    .btn-primary { font-size: 0.82rem; padding: 0.85rem 1.6rem; }
+
+    /* Sections */
+    .section { padding: 3.5rem 1rem; }
+    .section-label { font-size: 0.6rem; letter-spacing: 2px; }
+    .section-heading { font-size: 1.5rem; margin-bottom: 1.8rem; }
+
+    /* Funcional cards — coluna única */
+    .funcional-cards { grid-template-columns: 1fr; gap: 0.9rem; }
+    .funcional-lead { font-size: 0.9rem; }
+    .funcional-card { padding: 1.4rem 1.2rem; }
+
+    /* Help grid — 2 colunas compactas */
+    .help-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .help-card { padding: 1.1rem 0.7rem; }
+    .help-card-icon { font-size: 1.5rem; margin-bottom: 0.6rem; }
+    .help-card h3 { font-size: 0.82rem; }
+    .help-card p  { font-size: 0.7rem; }
+
+    /* Symptoms */
+    .symptom-item { padding: 1rem 1.2rem; font-size: 0.88rem; }
+    .identifica-cta { padding: 1.6rem 1rem; }
+    .identifica-text { font-size: 0.88rem; }
+
+    /* Diseases grid — 1 coluna no mobile */
+    .diseases-grid { grid-template-columns: 1fr; gap: 0.7rem; }
+    .disease-item { padding: 0.9rem 1rem; gap: 0.75rem; }
+    .disease-item h4 { font-size: 0.85rem; }
+    .disease-item p  { font-size: 0.72rem; }
+    .disease-item i  { font-size: 1.1rem; }
+
+    /* Teste Respiratório — mobile */
+    .disease-item--highlight { padding: 1.4rem 1.2rem; gap: 1rem; }
+    .disease-item--highlight::after { display: none; }
+    .disease-item--highlight i  { font-size: 1.6rem; }
+    .disease-item--highlight h4 { font-size: 0.95rem; }
+
+    /* Steps */
+    .steps-timeline { padding-left: 2.2rem; }
+    .step-number { left: -2.2rem; width: 2rem; height: 2rem; font-size: 0.72rem; }
+    .steps-timeline::before { left: 1rem; }
+    .step-body h3 { font-size: 0.82rem; }
+    .step-body p  { font-size: 0.8rem; }
+
+    /* Reviews — 1 coluna */
+    .reviews-grid { grid-template-columns: 1fr; gap: 0.9rem; }
+    .score-number { font-size: 2.4rem; }
+    .review-card { padding: 1.1rem; }
+    .review-card > p { font-size: 0.78rem; }
+    .review-meta strong { font-size: 0.82rem; }
+
+    /* Bio grid — coluna única */
+    .bio-grid { grid-template-columns: 1fr; }
+    .bio-card { padding: 1.5rem 1.2rem; text-align: center; }
+    .bio-card li { padding-left: 0; text-align: left; }
+
+    /* FAQ */
+    .faq-category-title { font-size: 0.7rem; }
+    .faq-question { font-size: 0.83rem; padding: 0.9rem 1rem; }
+    .faq-answer p { font-size: 0.82rem; padding: 0.8rem 1rem 1rem; }
+
+    /* Contact */
+    .contact-name { font-size: 1.1rem; }
+    .contact-crm  { font-size: 0.72rem; }
+    .btn-whatsapp-large { font-size: 0.9rem; padding: 0.85rem 1.4rem; width: 100%; justify-content: center; }
+    .map-wrapper iframe { height: 240px; }
+
+    /* Footer */
+    .footer-logo { height: 48px; }
+    .footer-handle { font-size: 0.85rem; }
+    .footer-ig-icon { font-size: 1.2rem; }
+    .footer-copy { font-size: 0.68rem; }
+}
+
+/* Telas intermediárias (481–768px) — tablets e celulares grandes */
+@media (min-width: 481px) and (max-width: 768px) {
+    .diseases-grid { grid-template-columns: repeat(2, 1fr); }
+    .funcional-cards { grid-template-columns: 1fr; }
+    .reviews-grid { grid-template-columns: repeat(2, 1fr); }
+    .bio-grid { grid-template-columns: 1fr; max-width: 420px; }
+    .help-grid { grid-template-columns: repeat(2, 1fr); }
+    .section { padding: 4rem 1.4rem; }
+    .section-heading { font-size: 1.7rem; }
 }
