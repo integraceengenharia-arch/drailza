@@ -1,56 +1,70 @@
 /**
- * Dra. Ilza Ezequiel — Site Engine
- * Canvas scroll animation + FAQ accordion + Scroll reveal animations
+ * Dra. Ilza Ezequiel — Site Engine (Performance Edition)
+ * Canvas scroll animation + FAQ accordion + Scroll reveal
+ * Mobile-optimized: carregamento progressivo e inteligente
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
     /* ======================================================================
-       CANVAS FRAME ANIMATION (Scroll-Synced)
+       DETECÇÃO DE DISPOSITIVO E CONEXÃO
        ====================================================================== */
 
-    const TOTAL_FRAMES = 144;
-    const INITIAL_PRELOAD_COUNT = 15;
-    const FRAME_PATH = 'public/frames/frame-';
-    const FRAME_EXT = '.webp';
+    const isMobile   = window.innerWidth <= 768 || ('ontouchstart' in window);
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const isSlowNet  = connection && ['slow-2g','2g','3g'].includes(connection.effectiveType);
 
-    const canvas = document.getElementById('fullscreenCanvas');
-    const ctx = canvas.getContext('2d');
+    // Configuração adaptativa por dispositivo/conexão
+    const CONFIG = {
+        TOTAL_FRAMES:         144,
+        INITIAL_PRELOAD:      isMobile ? (isSlowNet ? 3 : 6) : 15,
+        CHUNK_SIZE:           isMobile ? 5 : 10,
+        CHUNK_DELAY:          isMobile ? 60 : 30,
+        FRAME_PATH:           'public/frames/frame-',
+        FRAME_EXT:            '.webp',
+    };
+
+    /* ======================================================================
+       CANVAS SETUP
+       ====================================================================== */
+
+    const canvas        = document.getElementById('fullscreenCanvas');
+    const ctx           = canvas.getContext('2d');
     const loaderOverlay = document.getElementById('loaderOverlay');
     const scrollIndicator = document.getElementById('scrollIndicator');
-    const header = document.getElementById('siteHeader');
+    const header        = document.getElementById('siteHeader');
 
     const framesMap = new Map();
     let currentFrameIndex = 1;
     let ticking = false;
+    let lastRenderedFrame = -1;
 
-    function formatFrameNumber(num) {
-        return String(num).padStart(4, '0');
-    }
+    function fmt(num) { return String(num).padStart(4, '0'); }
+    function src(i)   { return `${CONFIG.FRAME_PATH}${fmt(i)}${CONFIG.FRAME_EXT}`; }
 
-    function getFrameSrc(index) {
-        return `${FRAME_PATH}${formatFrameNumber(index)}${FRAME_EXT}`;
-    }
+    /* ======================================================================
+       RENDER — com cache de frame (evita re-draw desnecessário)
+       ====================================================================== */
 
     function renderFrame(index) {
+        if (index === lastRenderedFrame) return; // já está desenhado
+
         let img = framesMap.get(index);
         if (!img || !img.complete) {
+            // Fallback: frame mais próximo já carregado
             for (let i = index - 1; i >= 1; i--) {
-                if (framesMap.has(i) && framesMap.get(i).complete) {
-                    img = framesMap.get(i);
-                    break;
-                }
+                const f = framesMap.get(i);
+                if (f && f.complete) { img = f; break; }
             }
         }
-
         if (!img || !img.complete) return;
 
-        const dpr = window.devicePixelRatio || 1;
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        const isMobile = w <= 768;
+        const dpr    = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2); // limita DPR no mobile
+        const w      = window.innerWidth;
+        const h      = window.innerHeight;
 
-        if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+        if (canvas.width  !== Math.round(w * dpr) ||
+            canvas.height !== Math.round(h * dpr)) {
             canvas.width  = Math.round(w * dpr);
             canvas.height = Math.round(h * dpr);
         }
@@ -58,18 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.save();
         ctx.scale(dpr, dpr);
         ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingQuality = isMobile ? 'medium' : 'high';
 
         const scale = Math.max(w / img.width, h / img.height);
         const drawW = img.width  * scale;
         const drawH = img.height * scale;
 
-        // Desktop: ancora à esquerda (dra fica visível no lado esquerdo do frame)
-        // Mobile: centraliza horizontalmente para a dra ficar no centro
+        // Mobile: centralizado | Desktop: ancorado levemente à esquerda
         const drawX = isMobile
-            ? (w - drawW) / 2        // centralizado no celular
-            : Math.min(0, (w - drawW) * 0.3); // leve deslocamento à esquerda no desktop
-
+            ? (w - drawW) / 2
+            : Math.min(0, (w - drawW) * 0.3);
         const drawY = drawH > h ? 0 : (h - drawH) / 2;
 
         ctx.clearRect(0, 0, w, h);
@@ -77,71 +89,77 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.restore();
 
         currentFrameIndex = index;
+        lastRenderedFrame = index;
     }
 
-    function loadSingleFrame(index) {
+    /* ======================================================================
+       CARREGAMENTO DE FRAMES
+       ====================================================================== */
+
+    function loadFrame(index) {
         return new Promise((resolve) => {
-            if (framesMap.has(index)) {
-                resolve(framesMap.get(index));
-                return;
-            }
+            if (framesMap.has(index)) { resolve(framesMap.get(index)); return; }
             const img = new Image();
-            img.onload = () => {
-                framesMap.set(index, img);
-                resolve(img);
-            };
+            img.onload  = () => { framesMap.set(index, img); resolve(img); };
             img.onerror = () => resolve(null);
-            img.src = getFrameSrc(index);
+            img.src     = src(index);
+            img.decoding = 'async'; // decodifica sem bloquear a thread principal
         });
     }
 
-    async function startPreload() {
-        const initialPromises = [];
-        for (let i = 1; i <= INITIAL_PRELOAD_COUNT; i++) {
-            initialPromises.push(loadSingleFrame(i));
+    // Pré-carrega os frames iniciais (os primeiros N para o hero aparecer rápido)
+    async function preloadInitial() {
+        const promises = [];
+        for (let i = 1; i <= CONFIG.INITIAL_PRELOAD; i++) {
+            promises.push(loadFrame(i));
         }
-        await Promise.all(initialPromises);
-
+        await Promise.all(promises);
         loaderOverlay.classList.add('hidden');
         updateFrameFromScroll();
-        loadRemainingFramesProgressively();
     }
 
-    async function loadRemainingFramesProgressively() {
-        const CHUNK_SIZE = 10;
-        for (let i = INITIAL_PRELOAD_COUNT + 1; i <= TOTAL_FRAMES; i += CHUNK_SIZE) {
-            const chunkPromises = [];
-            for (let j = i; j < i + CHUNK_SIZE && j <= TOTAL_FRAMES; j++) {
-                chunkPromises.push(loadSingleFrame(j));
+    // Carrega o restante em chunks em background, priorizando frames próximos ao scroll atual
+    async function loadRemaining() {
+        const CHUNK = CONFIG.CHUNK_SIZE;
+        const DELAY = CONFIG.CHUNK_DELAY;
+
+        for (let i = CONFIG.INITIAL_PRELOAD + 1; i <= CONFIG.TOTAL_FRAMES; i += CHUNK) {
+            // Pausa se o usuário está scrollando (prioriza UI)
+            await new Promise(r => setTimeout(r, DELAY));
+
+            const batch = [];
+            for (let j = i; j < i + CHUNK && j <= CONFIG.TOTAL_FRAMES; j++) {
+                batch.push(loadFrame(j));
             }
-            await Promise.all(chunkPromises);
-            await new Promise(r => setTimeout(r, 30));
+            await Promise.all(batch);
         }
     }
 
+    async function startPreload() {
+        await preloadInitial();
+        loadRemaining(); // roda em background sem await
+    }
+
+    /* ======================================================================
+       SCROLL SYNC
+       ====================================================================== */
+
     function updateFrameFromScroll() {
-        // Frames distribuídos pelos primeiros 75% do scroll total da página
-        const maxScroll    = document.documentElement.scrollHeight - window.innerHeight;
-        const animationEnd = maxScroll * 0.75;
+        const maxScroll      = document.documentElement.scrollHeight - window.innerHeight;
+        const animationEnd   = maxScroll * 0.75;
         const scrollFraction = Math.max(0, Math.min(1, window.scrollY / animationEnd));
-        const frameIndex = Math.min(
-            TOTAL_FRAMES,
-            Math.max(1, Math.floor(scrollFraction * TOTAL_FRAMES) + 1)
+        const frameIndex     = Math.min(
+            CONFIG.TOTAL_FRAMES,
+            Math.max(1, Math.floor(scrollFraction * CONFIG.TOTAL_FRAMES) + 1)
         );
 
         renderFrame(frameIndex);
 
-        // Scroll indicator
         if (scrollIndicator) {
             scrollIndicator.style.opacity = window.scrollY > 80 ? '0' : '1';
         }
 
-        // Header scrolled state
-        if (window.scrollY > 100) {
-            header.classList.add('scrolled');
-        } else {
-            header.classList.remove('scrolled');
-        }
+        header.classList.toggle('scrolled', window.scrollY > 100);
     }
 
     window.addEventListener('scroll', () => {
@@ -154,9 +172,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { passive: true });
 
+    let resizeTimer;
     window.addEventListener('resize', () => {
-        updateFrameFromScroll();
-    });
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            lastRenderedFrame = -1; // força re-draw após resize
+            updateFrameFromScroll();
+        }, 150);
+    }, { passive: true });
 
     startPreload();
 
@@ -164,26 +187,19 @@ document.addEventListener('DOMContentLoaded', () => {
        FAQ ACCORDION
        ====================================================================== */
 
-    const faqItems = document.querySelectorAll('.faq-item');
-
-    faqItems.forEach(item => {
-        const button = item.querySelector('.faq-question');
-        if (!button) return;
-
-        button.addEventListener('click', () => {
+    document.querySelectorAll('.faq-item').forEach(item => {
+        const btn = item.querySelector('.faq-question');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
             const isActive = item.classList.contains('active');
-
-            // Fecha todos
-            faqItems.forEach(i => {
+            document.querySelectorAll('.faq-item').forEach(i => {
                 i.classList.remove('active');
                 const q = i.querySelector('.faq-question');
                 if (q) q.setAttribute('aria-expanded', 'false');
             });
-
-            // Abre o clicado
             if (!isActive) {
                 item.classList.add('active');
-                button.setAttribute('aria-expanded', 'true');
+                btn.setAttribute('aria-expanded', 'true');
             }
         });
     });
@@ -192,8 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
        SCROLL REVEAL (Intersection Observer)
        ====================================================================== */
 
-    const animatedElements = document.querySelectorAll('.animate-on-scroll');
-
     const revealObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -201,11 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 revealObserver.unobserve(entry.target);
             }
         });
-    }, {
-        threshold: 0.10,
-        rootMargin: '0px 0px -40px 0px'
-    });
+    }, { threshold: 0.10, rootMargin: '0px 0px -40px 0px' });
 
-    animatedElements.forEach(el => revealObserver.observe(el));
+    document.querySelectorAll('.animate-on-scroll').forEach(el => revealObserver.observe(el));
 
 });
