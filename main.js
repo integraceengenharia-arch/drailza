@@ -19,11 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loaderOverlay = document.getElementById('loaderOverlay');
     const scrollIndicator = document.getElementById('scrollIndicator');
     const header = document.getElementById('siteHeader');
-    const heroSection = document.getElementById('hero');
 
     const framesMap = new Map();
     let currentFrameIndex = 1;
-    let totalLoadedCount = 0;
     let ticking = false;
 
     function formatFrameNumber(num) {
@@ -50,9 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const dpr = window.devicePixelRatio || 1;
         const w = window.innerWidth;
         const h = window.innerHeight;
+        const isMobile = w <= 768;
 
         if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-            canvas.width = Math.round(w * dpr);
+            canvas.width  = Math.round(w * dpr);
             canvas.height = Math.round(h * dpr);
         }
 
@@ -62,9 +61,15 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.imageSmoothingQuality = 'high';
 
         const scale = Math.max(w / img.width, h / img.height);
-        const drawW = img.width * scale;
+        const drawW = img.width  * scale;
         const drawH = img.height * scale;
-        const drawX = 0;
+
+        // Desktop: ancora à esquerda (dra fica visível no lado esquerdo do frame)
+        // Mobile: centraliza horizontalmente para a dra ficar no centro
+        const drawX = isMobile
+            ? (w - drawW) / 2        // centralizado no celular
+            : Math.min(0, (w - drawW) * 0.3); // leve deslocamento à esquerda no desktop
+
         const drawY = drawH > h ? 0 : (h - drawH) / 2;
 
         ctx.clearRect(0, 0, w, h);
@@ -83,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const img = new Image();
             img.onload = () => {
                 framesMap.set(index, img);
-                totalLoadedCount++;
                 resolve(img);
             };
             img.onerror = () => resolve(null);
@@ -116,9 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateFrameFromScroll() {
-        // Map frames across the FULL page scroll (video continues through all sections)
-        // Uses 75% of the total scrollable distance so animation completes before footer
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        // Frames distribuídos pelos primeiros 75% do scroll total da página
+        const maxScroll    = document.documentElement.scrollHeight - window.innerHeight;
         const animationEnd = maxScroll * 0.75;
         const scrollFraction = Math.max(0, Math.min(1, window.scrollY / animationEnd));
         const frameIndex = Math.min(
@@ -128,23 +131,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderFrame(frameIndex);
 
-        // Fade out scroll indicator
-        if (window.scrollY > 80) {
-            scrollIndicator.style.opacity = '0';
-        } else {
-            scrollIndicator.style.opacity = '1';
+        // Scroll indicator
+        if (scrollIndicator) {
+            scrollIndicator.style.opacity = window.scrollY > 80 ? '0' : '1';
         }
 
-        // Header background toggle
+        // Header scrolled state
         if (window.scrollY > 100) {
             header.classList.add('scrolled');
         } else {
             header.classList.remove('scrolled');
         }
-
-        // Canvas always stays visible — sections are semi-transparent
-        // so the video shows through all sections as user scrolls
-        // When video ends, canvas shows black (its background color)
     }
 
     window.addEventListener('scroll', () => {
@@ -155,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             ticking = true;
         }
-    });
+    }, { passive: true });
 
     window.addEventListener('resize', () => {
         updateFrameFromScroll();
@@ -171,16 +168,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     faqItems.forEach(item => {
         const button = item.querySelector('.faq-question');
+        if (!button) return;
+
         button.addEventListener('click', () => {
             const isActive = item.classList.contains('active');
 
-            // Close all items
+            // Fecha todos
             faqItems.forEach(i => {
                 i.classList.remove('active');
-                i.querySelector('.faq-question').setAttribute('aria-expanded', 'false');
+                const q = i.querySelector('.faq-question');
+                if (q) q.setAttribute('aria-expanded', 'false');
             });
 
-            // Toggle current
+            // Abre o clicado
             if (!isActive) {
                 item.classList.add('active');
                 button.setAttribute('aria-expanded', 'true');
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ======================================================================
-       SCROLL REVEAL ANIMATIONS (Intersection Observer)
+       SCROLL REVEAL (Intersection Observer)
        ====================================================================== */
 
     const animatedElements = document.querySelectorAll('.animate-on-scroll');
@@ -198,13 +198,12 @@ document.addEventListener('DOMContentLoaded', () => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('visible');
-                // Stop observing after reveal (one-time animation)
                 revealObserver.unobserve(entry.target);
             }
         });
     }, {
-        threshold: 0.12,
-        rootMargin: '0px 0px -50px 0px'
+        threshold: 0.10,
+        rootMargin: '0px 0px -40px 0px'
     });
 
     animatedElements.forEach(el => revealObserver.observe(el));
