@@ -81,11 +81,24 @@
     }
     </script>
 
+    <!-- Performance: Preconnect e DNS prefetch -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://maps.google.com">
+
+    <!-- CSS do site carrega primeiro -->
     <link rel="stylesheet" href="styles.css">
+
+    <!-- Google Fonts com display=swap (não bloqueia render) -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome: carrega de forma não-bloqueante -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+
+    <!-- Preload do primeiro frame: aparece sem delay -->
+    <link rel="preload" href="public/frames/frame-0001.webp" as="image" type="image/webp">
 </head>
 <body>
 
@@ -790,6 +803,6 @@
         </footer>
     </main>
 
-    <script src="main.js"></script>
+    <script src="main.js" defer></script>
 </body>
 </html>
